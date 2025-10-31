@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
+import './index.css'
+import robot from './assets/robot.png'
 
 export default function App() {
   const [convId, setConvId] = useState('default')
@@ -15,7 +17,8 @@ export default function App() {
     if (!input.trim()) return
     const userMsg = input
     setMessages(m => [...m, { role: 'user', content: userMsg, time: new Date().toLocaleTimeString() }])
-    setInput(''); setLoading(true)
+    setInput('')
+    setLoading(true)
 
     try {
       const res = await fetch('/chat', {
@@ -33,61 +36,42 @@ export default function App() {
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: '40px auto', fontFamily: 'Inter, sans-serif' }}>
-      <h1 style={{ textAlign: 'center', color: '#2b2d42' }}>🤖 ZM-AI Chat</h1>
-      <div style={{
-        border: '1px solid #ddd',
-        borderRadius: 12,
-        padding: 16,
-        background: '#f8f9fa',
-        minHeight: 400,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-      }}>
+    <div className="chat-container">
+      <div className="chat-header">
+        <img src={robot} alt="ZM-AI" className="logo" />
+        <h1>ZM-AI</h1>
+      </div>
+
+      <div className="chat-box">
         {messages.map((m, i) => (
-          <div key={i} style={{ margin: '12px 0' }}>
-            <div style={{
-              background: m.role === 'user' ? '#d4edda' : '#e2e3e5',
-              borderRadius: 10,
-              padding: '10px 14px',
-              maxWidth: '70%',
-              alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-              float: m.role === 'user' ? 'right' : 'left',
-              clear: 'both'
-            }}>
-              <strong>{m.role === 'user' ? 'You' : 'ZM-AI'}:</strong>
-              <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
-              <div style={{ fontSize: 10, color: '#666', textAlign: 'right' }}>{m.time}</div>
+          <div key={i} className={`message ${m.role}`}>
+            <div className="bubble">
+              <div className="content">{m.content}</div>
+              <div className="time">{m.time}</div>
             </div>
           </div>
         ))}
+
         {loading && (
-          <div style={{ margin: '8px 0', fontStyle: 'italic', color: '#888' }}>ZM-AI is typing...</div>
+          <div className="message assistant">
+            <div className="bubble typing">
+              <span className="dot"></span>
+              <span className="dot"></span>
+              <span className="dot"></span>
+            </div>
+          </div>
         )}
         <div ref={endRef} />
       </div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+
+      <div className="chat-input">
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
-          style={{
-            flex: 1,
-            padding: 10,
-            borderRadius: 8,
-            border: '1px solid #ccc'
-          }}
-          placeholder='Type your message...'
-        />
-        <button
-          onClick={send}
+          placeholder="Type your message..."
           disabled={loading}
-          style={{
-            background: '#2b2d42',
-            color: 'white',
-            border: 'none',
-            padding: '10px 18px',
-            borderRadius: 8,
-            cursor: 'pointer'
-          }}>
+        />
+        <button onClick={send} disabled={loading}>
           {loading ? '...' : 'Send'}
         </button>
       </div>
