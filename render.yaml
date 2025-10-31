@@ -12,4 +12,4 @@ services:
       - key: DB_PATH
         value: ./chat_history.db
       - key: OPENAI_API_KEY
-        sync: false  # you’ll set this manually in Render dashboard
+        sync: false
