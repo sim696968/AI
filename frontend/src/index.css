@@ -199,6 +199,21 @@ html, body, #root { background: linear-gradient(135deg,#f0f6ff 0%, #fbf7ff 50%, 
 .card-title { font-weight:600; color:#0f1724; }
 .card-sub { color:var(--muted); font-size:13px; }
 
+/* hero card micro-animations */
+.hero-card { transform: translateY(6px); opacity:0; animation: cardEnter .42s cubic-bezier(.2,.9,.2,1) forwards; }
+.hero-card:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(11,18,32,0.12); }
+.hero-card:nth-child(1) { animation-delay: 0.06s; }
+.hero-card:nth-child(2) { animation-delay: 0.12s; }
+.hero-card:nth-child(3) { animation-delay: 0.18s; }
+
+@keyframes cardEnter {
+  to { transform: translateY(0); opacity:1; }
+}
+
+/* chips micro-interaction */
+.chip { transition: transform .12s ease, box-shadow .12s ease; }
+.chip:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(11,18,32,0.08); }
+
 .dashboard-input { margin-top:auto; }
 .input-shell { background: linear-gradient(90deg, rgba(255,255,255,0.98), rgba(255,255,255,0.95)); border-radius:14px; padding:14px; display:flex; align-items:center; gap:12px; box-shadow: 0 6px 24px rgba(11,18,32,0.06); }
 .input-left { width:44px; height:44px; background:linear-gradient(180deg,#fff,#f3f6ff); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; }
