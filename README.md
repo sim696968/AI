@@ -1,13 +1,14 @@
-# GF-AI — ChatGPT-style assistant
+# ZM-AI Chat
 
-This repo is a starter project for a ChatGPT-like assistant using a local LLM (Ollama) or OpenAI API,
-a FastAPI backend, and a minimal React frontend.
+A lightweight, local or Render-deployable AI chat built using:
+- FastAPI (Python backend)
+- React + Vite (frontend)
+- SQLite (conversation history)
+- OpenAI GPT-4o-mini (as backend model)
 
-Run (quick):
-1. Install Ollama or set OPENAI_API_KEY in .env
-2. python -m venv .venv && source .venv/bin/activate
-3. pip install -r backend/requirements.txt
-4. cd frontend && npm install && npm run dev
-5. python backend/server.py
-
-See system_prompt.txt for the assistant personality.
+## Running locally
+1. Start backend:
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   python server.py

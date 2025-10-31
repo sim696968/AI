@@ -1,9 +1,5 @@
 fastapi
-uvicorn[standard]
-requests
-python-dotenv
-httpx
+uvicorn
 pydantic
-sentence-transformers
-faiss-cpu
-sqlalchemy
+python-dotenv
+requests

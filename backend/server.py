@@ -1,4 +1,4 @@
-# FastAPI server (with CORS + OpenAI / Ollama support)
+# ZM-AI FastAPI Backend Server
 import os
 import json
 import sqlite3
@@ -11,25 +11,24 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Configuration
-USE_OLLAMA = os.getenv("USE_OLLAMA", "1") == "1"
+USE_OLLAMA = os.getenv("USE_OLLAMA", "0") == "1"
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3:13b")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 DB_PATH = os.getenv("DB_PATH", "./chat_history.db")
 
 # Initialize FastAPI
-app = FastAPI()
+app = FastAPI(title="ZM-AI Chat API")
 
-# --- ✅ Enable CORS so frontend (http://localhost:5173) can access backend ---
+# ✅ Enable CORS so frontend can call backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # You can change this to ["http://localhost:5173"] for stricter security
+    allow_origins=["*"],  # You can set this to ["http://localhost:5173"] for stricter
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Initialize SQLite database ---
+# Initialize database
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute('''CREATE TABLE IF NOT EXISTS conversations (
@@ -41,24 +40,25 @@ def init_db():
 
 init_db()
 
-# --- Request schema ---
+# Request model
 class ChatRequest(BaseModel):
     conv_id: str | None = None
     message: str
     system_prompt: str | None = None
 
-# --- Chat endpoint ---
+# Chat endpoint
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    # Load system prompt
-    try:
-        system_prompt = req.system_prompt or open("system_prompt.txt", "r", encoding="utf-8").read()
-    except FileNotFoundError:
-        system_prompt = "You are GF-AI, a helpful assistant."
+    # Load system prompt (if not passed)
+    system_prompt = req.system_prompt or (
+        open("backend/system_prompt.txt").read()
+        if os.path.exists("backend/system_prompt.txt")
+        else "You are ZM-AI, a helpful and professional assistant."
+    )
 
     conv_id = req.conv_id or "default"
 
-    # Retrieve conversation history
+    # Load chat history
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT messages FROM conversations WHERE id = ?", (conv_id,))
@@ -66,11 +66,12 @@ async def chat(req: ChatRequest):
     history = json.loads(row[0]) if row else []
     history.append({"role": "user", "content": req.message})
 
-    # --- Ollama (offline mode) ---
+    # 🧩 Generate reply
     if USE_OLLAMA:
         combined = system_prompt + "\n\n"
         for m in history:
             combined += f"{m['role'].upper()}: {m['content']}\n"
+
         try:
             proc = subprocess.run(
                 ["ollama", "run", OLLAMA_MODEL, combined],
@@ -78,13 +79,11 @@ async def chat(req: ChatRequest):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                timeout=120
+                timeout=120,
             )
             reply = proc.stdout.strip()
         except subprocess.CalledProcessError as e:
             raise HTTPException(status_code=500, detail=f"Ollama error: {e.stderr}")
-
-    # --- OpenAI (online mode) ---
     else:
         if not OPENAI_API_KEY:
             raise HTTPException(status_code=500, detail="OpenAI API key not configured")
@@ -108,16 +107,23 @@ async def chat(req: ChatRequest):
         data = res.json()
         reply = data["choices"][0]["message"]["content"]
 
-    # --- Save conversation ---
+    # Save new history
     history.append({"role": "assistant", "content": reply})
-    cur.execute("REPLACE INTO conversations (id, messages) VALUES (?, ?)", (conv_id, json.dumps(history)))
+    cur.execute(
+        "REPLACE INTO conversations (id, messages) VALUES (?, ?)",
+        (conv_id, json.dumps(history)),
+    )
     conn.commit()
     conn.close()
 
     return {"reply": reply, "conv_id": conv_id}
 
+# Root test route
+@app.get("/")
+def root():
+    return {"message": "ZM-AI Backend is running successfully 🚀"}
 
-# --- Start server ---
+# Run server
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
