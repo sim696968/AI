@@ -100,3 +100,93 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background: #f6f8fb;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.zm-root {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  width: 420px;
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.zm-header {
+  background: #4a6cf7;
+  color: white;
+  padding: 16px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.zm-chatbox {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.zm-msg {
+  display: flex;
+}
+
+.zm-msg.user {
+  justify-content: flex-end;
+}
+
+.zm-msg.ai {
+  justify-content: flex-start;
+}
+
+.bubble {
+  background: #e3e7ff;
+  padding: 10px 14px;
+  border-radius: 16px;
+  max-width: 70%;
+}
+
+.zm-msg.user .bubble {
+  background: #4a6cf7;
+  color: white;
+}
+
+.zm-input {
+  display: flex;
+  border-top: 1px solid #ddd;
+}
+
+.zm-input input {
+  flex: 1;
+  border: none;
+  padding: 12px;
+  font-size: 16px;
+  outline: none;
+}
+
+.zm-input button {
+  background: #4a6cf7;
+  color: white;
+  border: none;
+  padding: 0 18px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.zm-input button:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
