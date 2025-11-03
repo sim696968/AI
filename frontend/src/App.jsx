@@ -1,5 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import "./index.css";
+import plusIcon from "./assets/icons/plus.svg";
+import searchIcon from "./assets/icons/search.svg";
+import chatIcon from "./assets/icons/chat-icon.svg";
+import profileIcon from "./assets/icons/profile.svg";
+import boxIcon from "./assets/icons/box.svg";
+import heroChatIcon from "./assets/icons/chat.svg";
+import calendarIcon from "./assets/icons/calendar.svg";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 const LS_CONVS = "zmai_conversations";
@@ -80,8 +87,9 @@ export default function App() {
       const res = await fetch(`${API_BASE}/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: q, conv_id: convId }) });
       const data = await res.json();
       const assistantText = data.reply || "No response from server.";
-      const updated = [userMsg, { role: "assistant", text: assistantText }];
-      setMessages(updated);
+
+      // simulate streaming reveal
+      simulateStream(assistantText, convId, userMsg);
       localStorage.setItem(`zmai_msgs_${convId}`, JSON.stringify(updated));
       fetchConversations();
       setView("chat");
@@ -101,6 +109,36 @@ export default function App() {
     setView("chat");
     const cached = localStorage.getItem(`zmai_msgs_${id}`);
     if (cached) setMessages(JSON.parse(cached));
+  };
+
+  // streaming simulation: gradually reveal assistant text
+  const streamTimers = useRef([]);
+  useEffect(() => {
+    return () => {
+      // cleanup timers on unmount
+      streamTimers.current.forEach((t) => clearInterval(t));
+    };
+  }, []);
+
+  const simulateStream = (fullText, convId, userMsg) => {
+    // clear any existing timers
+    streamTimers.current.forEach((t) => clearInterval(t));
+    streamTimers.current = [];
+
+    let idx = 0;
+    const chunkSize = 2; // reveal characters per tick
+    const placeholder = { role: "assistant", text: "", streaming: true };
+    setMessages([userMsg, placeholder]);
+
+    const t = setInterval(() => {
+      idx += chunkSize;
+      const slice = fullText.slice(0, idx);
+      setMessages([userMsg, { role: "assistant", text: slice }]);
+      if (idx >= fullText.length) {
+        clearInterval(t);
+      }
+    }, 30);
+    streamTimers.current.push(t);
   };
 
   const sendMessage = async () => {
@@ -128,21 +166,21 @@ export default function App() {
   return (
     <div className="app-bg">
       <div className="app-shell">
-        <nav className="left-bar">
+        <nav className="left-bar" aria-label="Primary navigation">
           <div className="left-top">
             <Icon label="New" onClick={() => createConversation()}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <img src={plusIcon} alt="new" width="18" height="18" />
             </Icon>
-            <Icon label="Search" onClick={() => setView("dashboard") } active={view==="dashboard"}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="2"/></svg>
+            <Icon label="Dashboard" onClick={() => setView("dashboard") } active={view==="dashboard"}>
+              <img src={searchIcon} alt="dashboard" width="18" height="18" />
             </Icon>
             <Icon label="Chat" onClick={() => setView("chat")} active={view==="chat"}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <img src={chatIcon} alt="chat" width="18" height="18" />
             </Icon>
           </div>
           <div className="left-bottom">
             <Icon label="Profile">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="1.6"/></svg>
+              <img src={profileIcon} alt="profile" width="18" height="18" />
             </Icon>
           </div>
         </nav>
@@ -151,31 +189,28 @@ export default function App() {
           {view === "dashboard" ? (
             <div className="dashboard">
               <header className="dashboard-header">
-                <div className="welcome">Hi Nixtio, <span>Ready to Achieve Great Things?</span></div>
+                <div className="welcome"><span>Ready to Achieve Great Things?</span></div>
                 <div className="upgrade">Upgrade</div>
               </header>
 
               <section className="hero-cards">
                 <div className="hero-card">
                   <div className="card-icon">
-                    {/* box icon */}
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" stroke="#0f1724" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <img src={boxIcon} alt="box" width="28" height="28" />
                   </div>
                   <div className="card-title">Contribute ideas, offer feedback, manage tasks — all in sync.</div>
                   <div className="card-sub">Fast Start</div>
                 </div>
                 <div className="hero-card">
                   <div className="card-icon">
-                    {/* chat bubble icon */}
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="#0f1724" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <img src={heroChatIcon} alt="chat" width="28" height="28" />
                   </div>
                   <div className="card-title">Stay connected, share ideas, and align goals effortlessly.</div>
                   <div className="card-sub">Collaborate with Team</div>
                 </div>
                 <div className="hero-card">
                   <div className="card-icon">
-                    {/* calendar icon */}
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="16" rx="2" stroke="#0f1724" strokeWidth="1.2"/><path d="M16 3v4M8 3v4M3 11h18" stroke="#0f1724" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <img src={calendarIcon} alt="calendar" width="28" height="28" />
                   </div>
                   <div className="card-title">Organize your time efficiently, set clear priorities, and stay focused</div>
                   <div className="card-sub">Planning</div>
@@ -197,16 +232,38 @@ export default function App() {
             </div>
           ) : (
             <div className="chat-view">
-              <aside className="chat-list">
+              <aside className="chat-list" aria-label="Conversations">
                 <div className="chat-list-top">
                   <h3>Conversations</h3>
-                  <button className="new-small" onClick={() => createConversation()}>+ New</button>
+                  <button className="new-small" onClick={() => createConversation()} aria-label="Create conversation">+ New</button>
                 </div>
                 <div className="chat-items">
                   {conversations.map((c) => (
-                    <div key={c.id} className={`chat-item ${selectedConvId === c.id ? "active" : ""}`} onClick={() => openConversation(c.id)}>
-                      <div className="item-badge" style={{ background: c.color || "#4A90E2" }} />
-                      <div className="item-title">{c.title || c.id}</div>
+                    <div key={c.id} className={`chat-item ${selectedConvId === c.id ? "active" : ""}`}>
+                      <div className="item-badge" style={{ background: c.color || "#4A90E2" }} onClick={() => openConversation(c.id)} />
+                      <div className="item-title" onClick={() => openConversation(c.id)}>{c.title || c.id}</div>
+                      <div className="item-actions">
+                        <input aria-label="Pick color" type="color" defaultValue={c.color || "#4A90E2"} onChange={(e) => {
+                          // optimistic UI change
+                          const newColor = e.target.value;
+                          setConversations((arr) => arr.map(x => x.id === c.id ? { ...x, color: newColor } : x));
+                          // send to backend
+                          fetch(`${API_BASE}/conversation/${c.id}/color`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ color: newColor }) }).catch(()=>{});
+                        }} />
+                        <button className="rename-btn" onClick={() => {
+                          const newTitle = prompt('Rename conversation', c.title || '');
+                          if (newTitle) {
+                            setConversations((arr) => arr.map(x => x.id === c.id ? { ...x, title: newTitle } : x));
+                            fetch(`${API_BASE}/conversation/${c.id}/rename`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newTitle }) }).catch(()=>{});
+                          }
+                        }} aria-label={`Rename ${c.title || c.id}`}>✎</button>
+                        <button className="delete-btn" onClick={() => {
+                          if (confirm(`Delete conversation "${c.title || c.id}"? This cannot be undone.`)) {
+                            fetch(`${API_BASE}/conversation/${c.id}`, { method: 'DELETE' }).catch(()=>{});
+                            setConversations((arr) => arr.filter(x=>x.id !== c.id));
+                          }
+                        }} aria-label={`Delete ${c.title || c.id}`}>🗑️</button>
+                      </div>
                     </div>
                   ))}
                 </div>
