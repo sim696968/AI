@@ -109,6 +109,22 @@ export default function ChatSidebar({ chats, activeChatId, onSelect, onNewChat, 
         <button className="new-chat-btn" onClick={onNewChat}>
           + New Chat
         </button>
+
+        {/* quick nav rows similar to reference */}
+        <div className="nav-row" onClick={() => { /* placeholder action */ }}>
+          <span>📄</span>
+          <span style={{marginLeft:8}}>Templates</span>
+          <span style={{marginLeft:'auto', background:'#ff7a90', color:'#fff', padding:'2px 6px', borderRadius:6, fontSize:11}}>PRO</span>
+        </div>
+        <div className="nav-row" onClick={() => { /* placeholder action */ }}>
+          <span>📁</span>
+          <span style={{marginLeft:8}}>My Projects</span>
+          <span style={{marginLeft:'auto', background:'#ff7a90', color:'#fff', padding:'2px 6px', borderRadius:6, fontSize:11}}>PRO</span>
+        </div>
+        <div className="nav-row" onClick={() => { /* placeholder action */ }}>
+          <span>📊</span>
+          <span style={{marginLeft:8}}>Statistics</span>
+        </div>
       </div>
 
       <div className="chat-sections">
@@ -147,6 +163,18 @@ export default function ChatSidebar({ chats, activeChatId, onSelect, onNewChat, 
             </button>
           </div>
         )}
+      </div>
+      <div className="pro-card">
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <div>
+            <div style={{fontWeight:700}}>Pro Plan</div>
+            <div style={{fontSize:12, opacity:0.9}}>Strengthen AI features</div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div className="price">$10/mo</div>
+            <button className="small-btn" style={{marginTop:8}}>Get</button>
+          </div>
+        </div>
       </div>
     </div>
   );

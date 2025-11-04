@@ -97,34 +97,7 @@ export default function ChatWindow({ chatId, chat, setChats, BACKEND_URL }) {
     </div>
   );
 
-  const renderToolbar = () => (
-    <div className="chat-toolbar">
-      <button 
-        className={`toolbar-btn ${activeTab === "chat" ? "active" : ""}`}
-        onClick={() => setActiveTab("chat")}
-      >
-        💬 Chat
-      </button>
-      <button 
-        className={`toolbar-btn ${activeTab === "images" ? "active" : ""}`}
-        onClick={() => setActiveTab("images")}
-      >
-        🖼️ Images
-      </button>
-      <button 
-        className={`toolbar-btn ${activeTab === "translate" ? "active" : ""}`}
-        onClick={() => setActiveTab("translate")}
-      >
-        🌐 Translate
-      </button>
-      <button 
-        className={`toolbar-btn ${activeTab === "audio" ? "active" : ""}`}
-        onClick={() => setActiveTab("audio")}
-      >
-        🎤 Audio Chat
-      </button>
-    </div>
-  );
+  // toolbar removed (replaced by feature pills below)
 
   if (!chatId) {
     return (
@@ -140,6 +113,37 @@ export default function ChatWindow({ chatId, chat, setChats, BACKEND_URL }) {
         <button className="back-button">←</button>
         <h2>New Chat</h2>
         <button className="close-button">×</button>
+      </div>
+
+      {/* Intro / document summary area (matches reference) */}
+      <div className="intro-section">
+        <div className="user-intro">
+          <div className="user-avatar"><img src="/user-avatar.png" alt="user"/></div>
+          <div>
+            <div className="greeting">Hi, Marry!</div>
+            <div className="sub">How can I help you?</div>
+          </div>
+          <div style={{marginLeft:'auto'}}>
+            {/* small action icons */}
+            <button className="small-btn">⋯</button>
+          </div>
+        </div>
+
+        <div className="code-area">
+          <div className="tabs">
+            <div className="tab">HTML</div>
+            <div className="tab">CSS</div>
+            <div className="tab active">JS</div>
+          </div>
+          <div style={{fontSize:13, color:'#444'}}>let cancelButton = document.getElementById("cancel-button");</div>
+        </div>
+
+        <div className="doc-cards">
+          <div className="doc-pill">Chat Files</div>
+          <div className="doc-pill">Images</div>
+          <div className="doc-pill">Translate</div>
+          <div className="doc-pill">Audio Chat</div>
+        </div>
       </div>
 
       <div className="messages" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
