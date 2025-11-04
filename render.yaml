@@ -2,14 +2,6 @@ services:
   - type: web
     name: zm-ai
     env: python
-    buildCommand: |
-      pip install -r backend/requirements.txt
-      cd frontend && npm install && npm run build
-    startCommand: python backend/server.py
-    envVars:
-      - key: USE_OLLAMA
-        value: 0
-      - key: DB_PATH
-        value: ./chat_history.db
-      - key: OPENAI_API_KEY
-        sync: false
+    buildCommand: pip install -r backend/requirements.txt && cd frontend && npm install && npm run build
+    startCommand: uvicorn backend.server:app --host 0.0.0.0 --port $PORT
+    plan: free
