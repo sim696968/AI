@@ -1,113 +1,101 @@
-# backend/server.py
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import uuid
-import json
-import os
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from duckduckgo_search import DDGS
+import os
 
 app = FastAPI()
 
-# Allow frontend access (Render domain, localhost)
+# Allow frontend to call API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # you can limit this to your frontend URL if needed
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-DATA_FILE = "chat_data.json"
+# -------------------------------
+# 🔹 Chat memory storage
+# -------------------------------
+chat_sessions = {}  # key = session_id, value = list of messages
 
-# ------------------ Models ------------------
-class ChatMessage(BaseModel):
-    chat_id: str
-    role: str
-    content: str
 
-class NewChatRequest(BaseModel):
-    title: str | None = None
+# -------------------------------
+# 🔹 Helper: DuckDuckGo Web Search
+# -------------------------------
+def web_search(query, max_results=3):
+    try:
+        with DDGS() as ddgs:
+            results = ddgs.text(query, max_results=max_results)
+        if not results:
+            return "No relevant web results found."
+        output = "\n".join(
+            [f"- {r['title']} ({r['href']})" for r in results if 'title' in r]
+        )
+        return output
+    except Exception as e:
+        return f"Web search failed: {e}"
 
-class RenameChatRequest(BaseModel):
-    chat_id: str
-    new_title: str
 
-class DeleteChatRequest(BaseModel):
-    chat_id: str
-
-# ------------------ Utilities ------------------
-def load_data():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-
-# ------------------ Routes ------------------
+# -------------------------------
+# 🔹 Chat Endpoint
+# -------------------------------
 @app.post("/chat")
-async def chat(msg: ChatMessage):
-    data = load_data()
-    chat_id = msg.chat_id or str(uuid.uuid4())
+async def chat(request: Request):
+    data = await request.json()
+    message = data.get("message", "")
+    session_id = data.get("session_id", "default")
 
-    if chat_id not in data:
-        data[chat_id] = {"title": "New Chat", "messages": []}
+    # Create new session if needed
+    if session_id not in chat_sessions:
+        chat_sessions[session_id] = []
 
-    # Add user message
-    data[chat_id]["messages"].append({"role": "user", "content": msg.content})
+    # Save user message
+    chat_sessions[session_id].append({"role": "user", "content": message})
 
-    # Simple AI + Web Search combo
-    answer = None
-    if "search" in msg.content.lower():
-        try:
-            query = msg.content.replace("search", "").strip()
-            results = DDGS().text(query, max_results=3)
-            answer = "🔍 Web results:\n" + "\n".join([f"- {r['title']}: {r['href']}" for r in results])
-        except Exception as e:
-            answer = f"Search failed: {e}"
+    # Simple AI logic
+    if message.lower().startswith("search "):
+        query = message[7:].strip()
+        reply = f"🔍 Web search results for **{query}**:\n" + web_search(query)
     else:
-        # Local AI stub (you can replace with OpenAI or Gemini API)
-        answer = f"🤖 You said: {msg.content}"
+        reply = f"🤖 You said: {message}"
 
-    data[chat_id]["messages"].append({"role": "assistant", "content": answer})
-    save_data(data)
+    # Save assistant reply
+    chat_sessions[session_id].append({"role": "assistant", "content": reply})
 
-    return {"chat_id": chat_id, "reply": answer, "messages": data[chat_id]["messages"]}
+    # Generate chat title automatically (based on first message)
+    title = None
+    if len(chat_sessions[session_id]) == 2:  # first response
+        title = f"Topic: {message[:30]}"
 
-
-@app.post("/new_chat")
-async def new_chat(req: NewChatRequest):
-    data = load_data()
-    chat_id = str(uuid.uuid4())
-    title = req.title or "New Chat"
-    data[chat_id] = {"title": title, "messages": []}
-    save_data(data)
-    return {"chat_id": chat_id, "title": title}
+    return JSONResponse({"reply": reply, "title": title})
 
 
-@app.post("/rename_chat")
-async def rename_chat(req: RenameChatRequest):
-    data = load_data()
-    if req.chat_id in data:
-        data[req.chat_id]["title"] = req.new_title
-        save_data(data)
-        return {"status": "success"}
-    return {"status": "error", "message": "Chat not found"}
+# -------------------------------
+# 🔹 Static Frontend Serving
+# -------------------------------
+frontend_dir = os.path.join(os.path.dirname(__file__), "../frontend/dist")
+
+if os.path.exists(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
+
+# -------------------------------
+# 🔹 Root (Optional)
+# -------------------------------
+@app.get("/")
+def root():
+    index_path = os.path.join(frontend_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "Frontend not found. Please build it with npm run build."}
 
 
-@app.post("/delete_chat")
-async def delete_chat(req: DeleteChatRequest):
-    data = load_data()
-    if req.chat_id in data:
-        del data[req.chat_id]
-        save_data(data)
-        return {"status": "deleted"}
-    return {"status": "error", "message": "Chat not found"}
-
-
-@app.get("/chats")
-async def get_chats():
-    data = load_data()
-    return data
+# -------------------------------
+# 🔹 Start Command (for Render)
+# -------------------------------
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 5000))
+    uvicorn.run("server:app", host="0.0.0.0", port=port)
