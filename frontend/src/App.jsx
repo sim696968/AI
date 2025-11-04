@@ -62,12 +62,43 @@ export default function App() {
         onRename={handleRenameChat}
         onDelete={handleDeleteChat}
       />
-      <ChatWindow
-        chatId={activeChatId}
-        chat={chats[activeChatId]}
-        setChats={setChats}
-        BACKEND_URL={BACKEND_URL}
-      />
+
+      {/* main chat area */}
+      <div className="chat-window">
+        <div className="main-container">
+          <div className="content-card">
+            <ChatWindow
+              chatId={activeChatId}
+              chat={chats[activeChatId]}
+              setChats={setChats}
+              BACKEND_URL={BACKEND_URL}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* right history panel */}
+      <div className="history">
+        <h3>History</h3>
+        <div className="history-list">
+          {Object.entries(chats).length === 0 && (
+            <div className="muted">No history yet</div>
+          )}
+          {Object.entries(chats).map(([id, c]) => (
+            <div key={id} className="history-item">
+              <div style={{display:'flex', justifyContent:'space-between'}}>
+                <div style={{fontWeight:600}}>{c.title || 'New Chat'}</div>
+                <div className="muted">{c.timestamp ? new Date(c.timestamp).toLocaleDateString() : ''}</div>
+              </div>
+              <div className="muted" style={{marginTop:6}}>{(c.messages||[]).slice(-1)[0]?.content?.slice(0,80) || ''}</div>
+            </div>
+          ))}
+        </div>
+        <div className="history-footer">
+          <div className="muted">{Object.keys(chats).length}/50</div>
+          <button className="start-chat-btn" onClick={() => setChats({})}>Clear history</button>
+        </div>
+      </div>
     </div>
   );
 }
