@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZM-AI Chatbot</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>ZM-AI Assistant</h2>
+            <p>Online</p>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <!-- Chat messages will be appended here by JavaScript -->
+        </div>
+        <form class="chat-input-form" id="chat-form">
+            <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" required>
+            <button type="submit"><span class="material-symbols-outlined">send</span></button>
+        </form>
+    </div>
+    <script src="script.js"></script> <!-- This path is now correct if script.js is in the same folder -->
+</body>
+</html>
