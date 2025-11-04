@@ -151,62 +151,7 @@ export default function ChatSidebar({ chats, activeChatId, onSelect, onNewChat, 
     </div>
   );
 
-  function renderChatItem(chatId, chat) {
-    return (
-      <div
-        key={chatId}
-        className={`chat-item ${activeChatId === chatId ? "active" : ""}`}
-        onClick={() => onSelect(chatId)}
-      >
-        {editingChat === chatId ? (
-          <input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onBlur={() => {
-              onRename(chatId, newTitle);
-              setEditingChat(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                onRename(chatId, newTitle);
-                setEditingChat(null);
-              }
-            }}
-            autoFocus
-            className="chat-rename-input"
-          />
-        ) : (
-          <>
-            <div className="chat-item-content">
-              <span className="chat-icon">💭</span>
-              <span className="chat-title">{chat.title}</span>
-            </div>
-            <div className="chat-actions">
-              <button
-                className="action-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingChat(chatId);
-                  setNewTitle(chat.title);
-                }}
-              >
-                ✎
-              </button>
-              <button
-                className="action-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(chatId);
-                }}
-              >
-                🗑
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    );
-  }
+  // renderChatItem is defined above as a const; duplicate definition removed to fix build error
 }
 
 // Helper functions for date filtering
