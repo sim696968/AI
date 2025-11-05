@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 
 export default function ChatSidebar({ chats, activeChatId, onSelect, onNewChat, onRename, onDelete }) {
+  const handleNewChat = (e) => {
+    e?.preventDefault();
+    onNewChat();
+  };
   const [editingChat, setEditingChat] = useState(null);
   const [newTitle, setNewTitle] = useState("");
   
@@ -34,6 +38,16 @@ export default function ChatSidebar({ chats, activeChatId, onSelect, onNewChat, 
       date1.getMonth() === date2.getMonth() &&
       date1.getFullYear() === date2.getFullYear();
   };
+
+  const renderNewChatButton = () => (
+    <button className="new-chat-btn" onClick={handleNewChat}>
+      <div className="btn-content">
+        <img src="/src/assets/icons/plus.svg" alt="New" />
+        <span>New Chat</span>
+      </div>
+      <span className="shortcut">{window.navigator.platform.includes('Mac') ? '⌘N' : 'Ctrl+N'}</span>
+    </button>
+  );
 
   const renderChatItem = (chatId, chat) => (
     <div

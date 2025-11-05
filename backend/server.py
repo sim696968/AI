@@ -4,6 +4,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from duckduckgo_search import DDGS
 import os
+import uuid
+from datetime import datetime
 
 app = FastAPI()
 
@@ -20,6 +22,51 @@ app.add_middleware(
 # 🔹 Chat memory storage
 # -------------------------------
 chat_sessions = {}  # key = session_id, value = list of messages
+
+
+# -------------------------------
+# 🔹 New Chat Endpoint
+# -------------------------------
+@app.post("/new_chat")
+async def new_chat(request: Request):
+    data = await request.json()
+    template = data.get("template", "default")
+    
+    chat_id = str(uuid.uuid4())
+    timestamp = datetime.now().isoformat()
+    
+    # Template-specific titles and initial messages
+    templates = {
+        "code": {
+            "title": "Code Assistant",
+            "system_prompt": "I am a coding assistant. I can help you with programming questions, code review, and debugging."
+        },
+        "analysis": {
+            "title": "Data Analysis",
+            "system_prompt": "I am a data analysis assistant. I can help you analyze data, create visualizations, and interpret results."
+        },
+        "default": {
+            "title": "New Chat",
+            "system_prompt": None
+        }
+    }
+    
+    template_info = templates.get(template, templates["default"])
+    
+    chat_sessions[chat_id] = {
+        "title": template_info["title"],
+        "messages": [],
+        "timestamp": timestamp,
+        "template": template,
+        "system_prompt": template_info["system_prompt"]
+    }
+    
+    return {
+        "chat_id": chat_id,
+        "title": template_info["title"],
+        "timestamp": timestamp,
+        "template": template
+    }
 
 
 # -------------------------------

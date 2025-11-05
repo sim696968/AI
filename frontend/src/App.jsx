@@ -3,11 +3,29 @@ import ChatSidebar from "./components/ChatSidebar";
 import ChatWindow from "./components/ChatWindow";
 import "./App.css";
 
+// Keyboard shortcut handler
+const useKeyboardShortcuts = (handlers) => {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl/Cmd + N for new chat
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        handlers.onNewChat();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handlers]);
+};
+
 const BACKEND_URL = "https://zmai-backend.onrender.com"; // ← change to your real backend
 
 export default function App() {
   const [chats, setChats] = useState({});
   const [activeChatId, setActiveChatId] = useState(null);
+
+  // Set up keyboard shortcuts
+  useKeyboardShortcuts({ onNewChat: handleNewChat });
 
   // Fetch all chats on start
   useEffect(() => {
@@ -17,16 +35,49 @@ export default function App() {
       .catch(console.error);
   }, []);
 
-  // Create new chat
-  const handleNewChat = async () => {
-    const res = await fetch(`${BACKEND_URL}/new_chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const data = await res.json();
-    setChats(prev => ({ ...prev, [data.chat_id]: { title: data.title, messages: [] } }));
-    setActiveChatId(data.chat_id);
+  // Create new chat with optional template
+  const handleNewChat = async (template) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/new_chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template }),
+      });
+      const data = await res.json();
+      
+      // Add new chat to state
+      setChats(prev => ({
+        ...prev,
+        [data.chat_id]: {
+          title: data.title,
+          messages: [],
+          timestamp: data.timestamp,
+          template: template
+        }
+      }));
+      
+      // Switch to new chat
+      setActiveChatId(data.chat_id);
+
+      // Show welcome message if it's first chat
+      if (Object.keys(chats).length === 0) {
+        // You can customize this welcome message
+        const welcomeMessage = {
+          role: "assistant",
+          content: "👋 Welcome! I'm ready to help you with your questions and tasks."
+        };
+        setChats(prev => ({
+          ...prev,
+          [data.chat_id]: {
+            ...prev[data.chat_id],
+            messages: [welcomeMessage]
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error creating new chat:', error);
+      // You could add error handling UI here
+    }
   };
 
   // Rename chat
