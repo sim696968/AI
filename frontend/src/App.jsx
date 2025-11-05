@@ -89,7 +89,7 @@ export default function App() {
   };
 
   return (
-    <div className="zm-root">
+    <div className="zm-root dark">
       <ChatSidebar
         chats={chats}
         activeChatId={activeChatId}

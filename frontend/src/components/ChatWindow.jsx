@@ -42,52 +42,63 @@ export default function ChatWindow({ chatId, chat, setChats, BACKEND_URL }) {
 
   return (
     <div className="chat-window">
-      {!chatId ? (
-        <div className="main-container">
-          <div className="chat-header">
-            <h1>Your Personal<br />AI Advisor</h1>
-            <p>Ask me anything! I'm here to help with your questions.</p>
+      <section className="hero">
+        <div className="hero-inner">
+          <h1 className="hero-title">Your Personal<br/>AI Advisor</h1>
+          <p className="hero-sub">These are just a few of the many attractions. Ask me anything or join the beta.</p>
+          <div className="hero-cta">
+            <input className="hero-input" placeholder="Email Address" />
+            <button className="hero-join">Join Beta</button>
           </div>
         </div>
-      ) : (
-        <>
+      </section>
+
+      <div className="chat-card">
+        <div className="chat-card-inner">
           <div className="messages-container">
+            {(!chatId || !chat?.messages || chat.messages.length === 0) && (
+              <div className="empty-card">
+                <div className="empty-title">Start a conversation</div>
+                <div className="empty-sub">Click "New Chat" on the left or type below to begin.</div>
+              </div>
+            )}
+
             {chat?.messages?.map((msg, idx) => (
-              <div key={idx} className="message">
-                <div className="message-avatar">
-                  {msg.role === 'assistant' ? (
-                    <img src="/src/assets/icons/robot.png" alt="AI" />
-                  ) : (
-                    <img src="/src/assets/icons/user.png" alt="User" />
-                  )}
+              <div key={idx} className={`bubble ${msg.role === 'assistant' ? 'assistant' : 'user'}`}>
+                <div className="bubble-avatar">
+                  {msg.role === 'assistant' ? '🤖' : '👤'}
                 </div>
-                <div className="message-content">
-                  <div className="message-text">{msg.content}</div>
-                  <div className="message-time">{formatTime(msg.timestamp || Date.now())}</div>
+                <div className="bubble-content">
+                  <div className="bubble-text">{msg.content}</div>
+                  <div className="bubble-time">{formatTime(msg.timestamp || Date.now())}</div>
                 </div>
               </div>
             ))}
+
             <div ref={messagesEndRef} />
           </div>
-          <div className="input-area">
+
+          <div className="chat-input-row">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Write a message..."
+              placeholder="Write a message"
               disabled={loading}
+              className="chat-input"
             />
-            <button 
+            <button
               className="send-btn"
               onClick={sendMessage}
               disabled={loading || !input.trim()}
             >
-              {loading ? "Sending..." : "Send"}
+              <span>Send</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/></svg>
             </button>
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }
