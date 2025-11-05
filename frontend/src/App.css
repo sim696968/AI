@@ -38,13 +38,12 @@ html, body, #root {
 
 /* LEFT SIDEBAR */
 .sidebar {
-  width: 72px;
+  width: 280px;
   background: #0D0D0F;
   color: #fff;
-  padding: 16px 8px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 16px;
   border-right: 1px solid rgba(255,255,255,0.06);
 }
@@ -322,12 +321,13 @@ html, body, #root {
 }
 
 .messages-container {
-  max-height: 420px;
+  flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 8px 6px;
+  min-height: 200px;
 }
 
 .empty-card { text-align: center; color: rgba(255,255,255,0.6); padding: 40px 10px; }
