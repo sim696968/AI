@@ -6,19 +6,30 @@ export default function ChatWindow({ chatId, chat, setChats, BACKEND_URL }) {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollToBottom();
   }, [chat?.messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const sendMessage = async () => {
     if (!chatId || !input.trim()) return;
+    
     setLoading(true);
     const userMessage = input.trim();
     setInput("");
+
     try {
       const res = await fetch(`${BACKEND_URL}/chat`, {
         method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, message: userMessage }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message: userMessage
+        }),
       });
       const data = await res.json();
       setChats(prev => ({ ...prev, [chatId]: { ...prev[chatId], messages: data.messages } }));

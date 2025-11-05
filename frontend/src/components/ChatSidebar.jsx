@@ -1,19 +1,22 @@
 import React, { useState } from "react";
 
-export default function ChatSidebar({ chats, activeChatId, onSelect, onNewChat, onRename, onDelete }) {
-  const handleNewChat = (e) => {
-    e?.preventDefault();
-    onNewChat();
-  };
+export default function ChatSidebar({
+  chats,
+  activeChatId,
+  onSelect,
+  onNewChat,
+  onRename,
+  onDelete,
+}) {
   const [editingChat, setEditingChat] = useState(null);
   const [newTitle, setNewTitle] = useState("");
-  
+
   const groupChatsByDate = () => {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    
-    const groups = {
+
+    const chatGroups = {
       today: [],
       yesterday: [],
       older: []
@@ -22,25 +25,25 @@ export default function ChatSidebar({ chats, activeChatId, onSelect, onNewChat, 
     Object.entries(chats).forEach(([id, chat]) => {
       const chatDate = new Date(chat.timestamp || Date.now());
       if (isSameDay(chatDate, today)) {
-        groups.today.push([id, chat]);
+        chatGroups.today.push([id, chat]);
       } else if (isSameDay(chatDate, yesterday)) {
-        groups.yesterday.push([id, chat]);
+        chatGroups.yesterday.push([id, chat]);
       } else {
-        groups.older.push([id, chat]);
+        chatGroups.older.push([id, chat]);
       }
     });
-    
-    return groups;
+
+    return chatGroups;
   };
 
-  const isSameDay = (date1, date2) => {
-    return date1.getDate() === date2.getDate() &&
+  const isSameDay = (date1, date2) => (
+    date1.getDate() === date2.getDate() &&
       date1.getMonth() === date2.getMonth() &&
-      date1.getFullYear() === date2.getFullYear();
-  };
+      date1.getFullYear() === date2.getFullYear()
+  );
 
   const renderNewChatButton = () => (
-    <button className="new-chat-btn" onClick={handleNewChat}>
+    <button className="new-chat-btn" onClick={onNewChat}>
       <div className="btn-content">
         <img src="/src/assets/icons/plus.svg" alt="New" />
         <span>New Chat</span>
@@ -192,28 +195,4 @@ export default function ChatSidebar({ chats, activeChatId, onSelect, onNewChat, 
       </div>
     </div>
   );
-
-  // renderChatItem is defined above as a const; duplicate definition removed to fix build error
-}
-
-// Helper functions for date filtering
-function isToday(timestamp) {
-  const today = new Date();
-  const date = new Date(timestamp);
-  return date.toDateString() === today.toDateString();
-}
-
-function isYesterday(timestamp) {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const date = new Date(timestamp);
-  return date.toDateString() === yesterday.toDateString();
-}
-
-function isPreviousWeek(timestamp) {
-  const today = new Date();
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const date = new Date(timestamp);
-  return date > weekAgo && date < today && !isToday(timestamp) && !isYesterday(timestamp);
 }
