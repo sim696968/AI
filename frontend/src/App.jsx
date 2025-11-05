@@ -3,22 +3,7 @@ import ChatSidebar from "./components/ChatSidebar";
 import ChatWindow from "./components/ChatWindow";
 import "./App.css";
 
-// Keyboard shortcut handler
-const useKeyboardShortcuts = (handlers) => {
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Ctrl/Cmd + N for new chat
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-        e.preventDefault();
-        handlers.onNewChat();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlers]);
-};
-
-const BACKEND_URL = "https://zmai-backend.onrender.com"; // ← change to your real backend
+const BACKEND_URL = "https://zmai-backend.onrender.com";
 
 export default function App() {
   const [chats, setChats] = useState({});
@@ -32,107 +17,120 @@ export default function App() {
       .catch(console.error);
   }, []);
 
-  // Create new chat with optional template
-  const handleNewChat = async (template) => {
+  // Create new chat
+  const handleNewChat = async (template = null) => {
     try {
       const res = await fetch(`${BACKEND_URL}/new_chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ template }),
+        body: template ? JSON.stringify({ template }) : undefined
       });
       const data = await res.json();
-      
-      // Add new chat to state
       setChats(prev => ({
         ...prev,
         [data.chat_id]: {
           title: data.title,
           messages: [],
-          timestamp: data.timestamp,
-          template: template
+          timestamp: data.timestamp
         }
       }));
-      
-      // Switch to new chat
       setActiveChatId(data.chat_id);
-
-      // Show welcome message if it's first chat
-      if (Object.keys(chats).length === 0) {
-        // You can customize this welcome message
-        const welcomeMessage = {
-          role: "assistant",
-          content: "👋 Welcome! I'm ready to help you with your questions and tasks."
-        };
-        setChats(prev => ({
-          ...prev,
-          [data.chat_id]: {
-            ...prev[data.chat_id],
-            messages: [welcomeMessage]
-          }
-        }));
-      }
     } catch (error) {
       console.error('Error creating new chat:', error);
-      // You could add error handling UI here
     }
   };
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        handleNewChat();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Rename chat
   const handleRenameChat = async (chatId, newTitle) => {
-    await fetch(`${BACKEND_URL}/rename_chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, new_title: newTitle }),
-    });
-    setChats(prev => ({ ...prev, [chatId]: { ...prev[chatId], title: newTitle } }));
+    try {
+      await fetch(`${BACKEND_URL}/rename_chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, new_title: newTitle }),
+      });
+      setChats(prev => ({
+        ...prev,
+        [chatId]: { ...prev[chatId], title: newTitle }
+      }));
+    } catch (error) {
+      console.error('Error renaming chat:', error);
+    }
   };
 
   // Delete chat
   const handleDeleteChat = async (chatId) => {
-    await fetch(`${BACKEND_URL}/delete_chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId }),
-    });
-    const updated = { ...chats };
-    delete updated[chatId];
-    setChats(updated);
-    if (activeChatId === chatId) setActiveChatId(null);
+    try {
+      await fetch(`${BACKEND_URL}/delete_chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId }),
+      });
+      const newChats = { ...chats };
+      delete newChats[chatId];
+      setChats(newChats);
+      if (activeChatId === chatId) {
+        setActiveChatId(null);
+      }
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+    }
   };
 
   return (
     <div className="zm-root">
       <ChatSidebar
+        chats={chats}
+        activeChatId={activeChatId}
+        onSelect={setActiveChatId}
         onNewChat={handleNewChat}
+        onRename={handleRenameChat}
+        onDelete={handleDeleteChat}
       />
       
-      <ChatWindow
-        chatId={activeChatId}
-        chat={chats[activeChatId]}
-        setChats={setChats}
-        BACKEND_URL={BACKEND_URL}
-      />
+      <div className="main-content">
+        <ChatWindow
+          chatId={activeChatId}
+          chat={chats[activeChatId]}
+          setChats={setChats}
+          BACKEND_URL={BACKEND_URL}
+        />
+      </div>
 
-      {/* right history panel */}
       <div className="history">
         <h3>History</h3>
         <div className="history-list">
-          {Object.entries(chats).length === 0 && (
-            <div className="muted">No history yet</div>
-          )}
-          {Object.entries(chats).map(([id, c]) => (
-            <div key={id} className="history-item">
-              <div style={{display:'flex', justifyContent:'space-between'}}>
-                <div style={{fontWeight:600}}>{c.title || 'New Chat'}</div>
-                <div className="muted">{c.timestamp ? new Date(c.timestamp).toLocaleDateString() : ''}</div>
+          {Object.entries(chats).length === 0 ? (
+            <div className="history-empty">No history yet</div>
+          ) : (
+            Object.entries(chats).map(([id, chat]) => (
+              <div 
+                key={id} 
+                className={"history-item " + (id === activeChatId ? "active" : "")}
+                onClick={() => setActiveChatId(id)}
+              >
+                <div className="history-item-title">
+                  {chat.title || "New Chat"}
+                </div>
+                <div className="history-item-preview">
+                  {chat.messages && chat.messages.length > 0 
+                    ? chat.messages[chat.messages.length - 1].content.slice(0, 60) 
+                    : "No messages yet"}
+                </div>
               </div>
-              <div className="muted" style={{marginTop:6}}>{(c.messages||[]).slice(-1)[0]?.content?.slice(0,80) || ''}</div>
-            </div>
-          ))}
-        </div>
-        <div className="history-footer">
-          <div className="muted">{Object.keys(chats).length}/50</div>
-          <button className="start-chat-btn" onClick={() => setChats({})}>Clear history</button>
+            ))
+          )}
         </div>
       </div>
     </div>
