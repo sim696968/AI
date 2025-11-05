@@ -42,18 +42,11 @@ export default function ChatWindow({ chatId, chat, setChats, BACKEND_URL }) {
 
   return (
     <div className="chat-window">
-      <section className="hero">
-        <div className="hero-inner">
-          <h1 className="hero-title">Your Personal<br/>AI Advisor</h1>
-          <p className="hero-sub">These are just a few of the many attractions. Ask me anything or join the beta.</p>
-          <div className="hero-cta">
-            <input className="hero-input" placeholder="Email Address" />
-            <button className="hero-join">Join Beta</button>
-          </div>
-        </div>
-      </section>
-
-      <div className="chat-card">
+      <div className="chat-header">
+        <h1 className="chat-title">AI Chat Assistant</h1>
+      </div>
+      
+      <div className="chat-container">
         <div className="chat-card-inner">
           <div className="messages-container">
             {(!chatId || !chat?.messages || chat.messages.length === 0) && (
