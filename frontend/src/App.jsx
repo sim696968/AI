@@ -24,9 +24,6 @@ export default function App() {
   const [chats, setChats] = useState({});
   const [activeChatId, setActiveChatId] = useState(null);
 
-  // Set up keyboard shortcuts
-  useKeyboardShortcuts({ onNewChat: handleNewChat });
-
   // Fetch all chats on start
   useEffect(() => {
     fetch(`${BACKEND_URL}/chats`)
@@ -106,27 +103,15 @@ export default function App() {
   return (
     <div className="zm-root">
       <ChatSidebar
-        chats={chats}
-        activeChatId={activeChatId}
-        onSelect={setActiveChatId}
         onNewChat={handleNewChat}
-        onRename={handleRenameChat}
-        onDelete={handleDeleteChat}
       />
-
-      {/* main chat area */}
-      <div className="chat-window">
-        <div className="main-container">
-          <div className="content-card">
-            <ChatWindow
-              chatId={activeChatId}
-              chat={chats[activeChatId]}
-              setChats={setChats}
-              BACKEND_URL={BACKEND_URL}
-            />
-          </div>
-        </div>
-      </div>
+      
+      <ChatWindow
+        chatId={activeChatId}
+        chat={chats[activeChatId]}
+        setChats={setChats}
+        BACKEND_URL={BACKEND_URL}
+      />
 
       {/* right history panel */}
       <div className="history">
