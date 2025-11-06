@@ -11,5 +11,5 @@ services:
       npm run build
     staticPublishPath: "./frontend/dist"
     envVars:
-      - key: VITE_OPENAI_API_KEY
-        value: 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
+  - key: VITE_OPENAI_API_KEY
+    sync: false  # This means you'll set it in the Render dashboard

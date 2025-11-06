@@ -1,19 +1,25 @@
+// vite.config.mjs
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    open: true
+    open: true,
+    host: true
   },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    sourcemap: true
+    sourcemap: true,
+    minify: 'terser'
   },
   define: {
-    // This will make Vite replace process.env with import.meta.env
     'process.env': {}
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom']
   }
 });
