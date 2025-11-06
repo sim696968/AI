@@ -1,138 +1,134 @@
-import React, { useState, useEffect } from "react";
-import ChatSidebar from "./components/ChatSidebar";
-import ChatWindow from "./components/ChatWindow";
+import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 
-const BACKEND_URL = "https://zmai-backend.onrender.com";
-
-export default function App() {
-  const [chats, setChats] = useState({});
-  const [activeChatId, setActiveChatId] = useState(null);
-
-  // Fetch all chats on start
-  useEffect(() => {
-    fetch(`${BACKEND_URL}/chats`)
-      .then(res => res.json())
-      .then(setChats)
-      .catch(console.error);
-  }, []);
-
-  // Create new chat
-  const handleNewChat = async (template = null) => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/new_chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: template ? JSON.stringify({ template }) : undefined
-      });
-      const data = await res.json();
-      setChats(prev => ({
-        ...prev,
-        [data.chat_id]: {
-          title: data.title,
-          messages: [],
-          timestamp: data.timestamp
-        }
-      }));
-      setActiveChatId(data.chat_id);
-    } catch (error) {
-      console.error('Error creating new chat:', error);
+const App = () => {
+  const [messages, setMessages] = useState([
+    {
+      id: 1,
+      sender: 'ai',
+      text: 'Hello! I am ZM AI Assistant. How can I help you today?',
+      timestamp: new Date().toISOString()
     }
-  };
+  ]);
+  const [inputValue, setInputValue] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const messagesEndRef = useRef(null);
 
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-        e.preventDefault();
-        handleNewChat();
-      }
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!inputValue.trim()) return;
+
+    // Add user message
+    const userMessage = {
+      id: messages.length + 1,
+      sender: 'user',
+      text: inputValue,
+      timestamp: new Date().toISOString()
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
-  // Rename chat
-  const handleRenameChat = async (chatId, newTitle) => {
-    try {
-      await fetch(`${BACKEND_URL}/rename_chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, new_title: newTitle }),
-      });
-      setChats(prev => ({
-        ...prev,
-        [chatId]: { ...prev[chatId], title: newTitle }
-      }));
-    } catch (error) {
-      console.error('Error renaming chat:', error);
-    }
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponses = [
+        "I understand your question about " + inputValue + ". Let me help with that.",
+        "That's an interesting point about " + inputValue + ". Here's what I think...",
+        "Thanks for asking about " + inputValue + ". Here's the information you need...",
+        "I've analyzed your question about " + inputValue + ". Here's my response..."
+      ];
+      
+      const aiMessage = {
+        id: messages.length + 2,
+        sender: 'ai',
+        text: aiResponses[Math.floor(Math.random() * aiResponses.length)],
+        timestamp: new Date().toISOString()
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+    }, 1000);
   };
 
-  // Delete chat
-  const handleDeleteChat = async (chatId) => {
-    try {
-      await fetch(`${BACKEND_URL}/delete_chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId }),
-      });
-      const newChats = { ...chats };
-      delete newChats[chatId];
-      setChats(newChats);
-      if (activeChatId === chatId) {
-        setActiveChatId(null);
-      }
-    } catch (error) {
-      console.error('Error deleting chat:', error);
-    }
+  // Auto-scroll to bottom of messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
   };
 
   return (
-    <div className="zm-root dark">
-      <ChatSidebar
-        chats={chats}
-        activeChatId={activeChatId}
-        onSelect={setActiveChatId}
-        onNewChat={handleNewChat}
-        onRename={handleRenameChat}
-        onDelete={handleDeleteChat}
-      />
-      
-      <div className="main-content">
-        <ChatWindow
-          chatId={activeChatId}
-          chat={chats[activeChatId]}
-          setChats={setChats}
-          BACKEND_URL={BACKEND_URL}
-        />
+    <div className="app">
+      {/* Sidebar */}
+      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
+          <button className="new-chat-btn">
+            <span>+</span> New Chat
+          </button>
+          <button className="toggle-sidebar" onClick={toggleSidebar}>
+            ☰
+          </button>
+        </div>
+        <div className="chat-history">
+          <div className="chat-item active">
+            <span>New Chat</span>
+          </div>
+          <div className="chat-item">
+            <span>Previous Chat 1</span>
+          </div>
+          <div className="chat-item">
+            <span>Previous Chat 2</span>
+          </div>
+        </div>
+        <div className="user-profile">
+          <div className="profile-pic">U</div>
+          <span>User Name</span>
+        </div>
       </div>
 
-      <div className="history">
-        <h3>History</h3>
-        <div className="history-list">
-          {Object.entries(chats).length === 0 ? (
-            <div className="history-empty">No history yet</div>
-          ) : (
-            Object.entries(chats).map(([id, chat]) => (
-              <div 
-                key={id} 
-                className={"history-item " + (id === activeChatId ? "active" : "")}
-                onClick={() => setActiveChatId(id)}
-              >
-                <div className="history-item-title">
-                  {chat.title || "New Chat"}
+      {/* Main Chat Area */}
+      <div className="main-content">
+        {messages.length === 0 ? (
+          <div className="welcome-screen">
+            <h1>ZM AI Assistant</h1>
+            <p>How can I help you today?</p>
+          </div>
+        ) : (
+          <div className="chat-messages">
+            {messages.map((message) => (
+              <div key={message.id} className={`message ${message.sender}`}>
+                <div className="message-content">
+                  {message.text}
                 </div>
-                <div className="history-item-preview">
-                  {chat.messages && chat.messages.length > 0 
-                    ? chat.messages[chat.messages.length - 1].content.slice(0, 60) 
-                    : "No messages yet"}
+                <div className="message-time">
+                  {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+
+        <form className="message-input-container" onSubmit={handleSendMessage}>
+          <div className="input-wrapper">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Type your message here..."
+            />
+            <button type="submit" className="send-button">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
-}
+};
+
+export default App;
