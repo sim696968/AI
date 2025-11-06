@@ -3,15 +3,13 @@ services:
     name: zm-ai
     env: node
     plan: free
-    staticPublishPath: "./frontend/dist"
-    envVars:
-      - key: VITE_OPENAI_API_KEY
-        sync: false  # This means you need to set it in the Render dashboard
-      - key: NODE_VERSION
-        value: 18.x
     buildCommand: |
       echo "Installing dependencies..."
       cd frontend
       npm install
       echo "Building application..."
       npm run build
+    staticPublishPath: "./frontend/dist"
+    envVars:
+      - key: VITE_OPENAI_API_KEY
+        value: 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
