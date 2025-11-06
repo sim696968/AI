@@ -1,129 +1,148 @@
-# ZM-AI FastAPI Backend Server
-import os
-import json
-import sqlite3
-import subprocess
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from dotenv import load_dotenv
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from duckduckgo_search import DDGS
+import os
+import uuid
+from datetime import datetime
 
-# Load environment variables
-load_dotenv()
+app = FastAPI()
 
-USE_OLLAMA = os.getenv("USE_OLLAMA", "0") == "1"
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3:13b")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-DB_PATH = os.getenv("DB_PATH", "./chat_history.db")
-
-# Initialize FastAPI
-app = FastAPI(title="ZM-AI Chat API")
-
-# ✅ Enable CORS so frontend can call backend
+# Allow frontend to call API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # You can set this to ["http://localhost:5173"] for stricter
+    allow_origins=["*"],  # you can limit this to your frontend URL if needed
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize database
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute('''CREATE TABLE IF NOT EXISTS conversations (
-        id TEXT PRIMARY KEY,
-        messages TEXT
-    )''')
-    conn.commit()
-    conn.close()
+# -------------------------------
+# 🔹 Chat memory storage
+# -------------------------------
+chat_sessions = {}  # key = session_id, value = list of messages
 
-init_db()
 
-# Request model
-class ChatRequest(BaseModel):
-    conv_id: str | None = None
-    message: str
-    system_prompt: str | None = None
+# -------------------------------
+# 🔹 New Chat Endpoint
+# -------------------------------
+@app.post("/new_chat")
+async def new_chat(request: Request):
+    data = await request.json()
+    template = data.get("template", "default")
+    
+    chat_id = str(uuid.uuid4())
+    timestamp = datetime.now().isoformat()
+    
+    # Template-specific titles and initial messages
+    templates = {
+        "code": {
+            "title": "Code Assistant",
+            "system_prompt": "I am a coding assistant. I can help you with programming questions, code review, and debugging."
+        },
+        "analysis": {
+            "title": "Data Analysis",
+            "system_prompt": "I am a data analysis assistant. I can help you analyze data, create visualizations, and interpret results."
+        },
+        "default": {
+            "title": "New Chat",
+            "system_prompt": None
+        }
+    }
+    
+    template_info = templates.get(template, templates["default"])
+    
+    chat_sessions[chat_id] = {
+        "title": template_info["title"],
+        "messages": [],
+        "timestamp": timestamp,
+        "template": template,
+        "system_prompt": template_info["system_prompt"]
+    }
+    
+    return {
+        "chat_id": chat_id,
+        "title": template_info["title"],
+        "timestamp": timestamp,
+        "template": template
+    }
 
-# Chat endpoint
-@app.post("/chat")
-async def chat(req: ChatRequest):
-    # Load system prompt (if not passed)
-    system_prompt = req.system_prompt or (
-        open("backend/system_prompt.txt").read()
-        if os.path.exists("backend/system_prompt.txt")
-        else "You are ZM-AI, a helpful and professional assistant."
-    )
 
-    conv_id = req.conv_id or "default"
-
-    # Load chat history
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT messages FROM conversations WHERE id = ?", (conv_id,))
-    row = cur.fetchone()
-    history = json.loads(row[0]) if row else []
-    history.append({"role": "user", "content": req.message})
-
-    # 🧩 Generate reply
-    if USE_OLLAMA:
-        combined = system_prompt + "\n\n"
-        for m in history:
-            combined += f"{m['role'].upper()}: {m['content']}\n"
-
-        try:
-            proc = subprocess.run(
-                ["ollama", "run", OLLAMA_MODEL, combined],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=120,
-            )
-            reply = proc.stdout.strip()
-        except subprocess.CalledProcessError as e:
-            raise HTTPException(status_code=500, detail=f"Ollama error: {e.stderr}")
-    else:
-        if not OPENAI_API_KEY:
-            raise HTTPException(status_code=500, detail="OpenAI API key not configured")
-
-        import requests
-        messages = [{"role": "system", "content": system_prompt}] + history
-        res = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-            json={
-                "model": "gpt-4o-mini",
-                "messages": messages,
-                "max_tokens": 800,
-                "temperature": 0.2,
-            },
+# -------------------------------
+# 🔹 Helper: DuckDuckGo Web Search
+# -------------------------------
+def web_search(query, max_results=3):
+    try:
+        with DDGS() as ddgs:
+            results = ddgs.text(query, max_results=max_results)
+        if not results:
+            return "No relevant web results found."
+        output = "\n".join(
+            [f"- {r['title']} ({r['href']})" for r in results if 'title' in r]
         )
+        return output
+    except Exception as e:
+        return f"Web search failed: {e}"
 
-        if res.status_code != 200:
-            raise HTTPException(status_code=500, detail=res.text)
 
-        data = res.json()
-        reply = data["choices"][0]["message"]["content"]
+# -------------------------------
+# 🔹 Chat Endpoint
+# -------------------------------
+@app.post("/chat")
+async def chat(request: Request):
+    data = await request.json()
+    message = data.get("message", "")
+    session_id = data.get("session_id", "default")
 
-    # Save new history
-    history.append({"role": "assistant", "content": reply})
-    cur.execute(
-        "REPLACE INTO conversations (id, messages) VALUES (?, ?)",
-        (conv_id, json.dumps(history)),
-    )
-    conn.commit()
-    conn.close()
+    # Create new session if needed
+    if session_id not in chat_sessions:
+        chat_sessions[session_id] = []
 
-    return {"reply": reply, "conv_id": conv_id}
+    # Save user message
+    chat_sessions[session_id].append({"role": "user", "content": message})
 
-# Root test route
+    # Simple AI logic
+    if message.lower().startswith("search "):
+        query = message[7:].strip()
+        reply = f"🔍 Web search results for **{query}**:\n" + web_search(query)
+    else:
+        reply = f"🤖 You said: {message}"
+
+    # Save assistant reply
+    chat_sessions[session_id].append({"role": "assistant", "content": reply})
+
+    # Generate chat title automatically (based on first message)
+    title = None
+    if len(chat_sessions[session_id]) == 2:  # first response
+        title = f"Topic: {message[:30]}"
+
+    return JSONResponse({"reply": reply, "title": title})
+
+
+# -------------------------------
+# 🔹 Static Frontend Serving
+# -------------------------------
+frontend_dir = os.path.join(os.path.dirname(__file__), "../frontend/dist")
+
+if os.path.exists(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
+
+# -------------------------------
+# 🔹 Root (Optional)
+# -------------------------------
 @app.get("/")
 def root():
-    return {"message": "ZM-AI Backend is running successfully 🚀"}
+    index_path = os.path.join(frontend_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "Frontend not found. Please build it with npm run build."}
 
-# Run server
+
+# -------------------------------
+# 🔹 Start Command (for Render)
+# -------------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 5000))
+    uvicorn.run("server:app", host="0.0.0.0", port=port)
