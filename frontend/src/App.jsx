@@ -12,11 +12,12 @@ const App = () => {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isLoading) return;
 
     // Add user message
     const userMessage = {
@@ -26,27 +27,61 @@ const App = () => {
       timestamp: new Date().toISOString()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInputValue('');
+    setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponses = [
-        "I understand your question about " + inputValue + ". Let me help with that.",
-        "That's an interesting point about " + inputValue + ". Here's what I think...",
-        "Thanks for asking about " + inputValue + ". Here's the information you need...",
-        "I've analyzed your question about " + inputValue + ". Here's my response..."
-      ];
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a helpful AI assistant.'
+            },
+            ...updatedMessages.map(msg => ({
+              role: msg.sender === 'user' ? 'user' : 'assistant',
+              content: msg.text
+            }))
+          ],
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
       
-      const aiMessage = {
-        id: messages.length + 2,
+      if (data.choices && data.choices[0].message) {
+        const aiMessage = {
+          id: updatedMessages.length + 1,
+          sender: 'ai',
+          text: data.choices[0].message.content,
+          timestamp: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      }
+    } catch (error) {
+      console.error('Error calling OpenAI API:', error);
+      const errorMessage = {
+        id: updatedMessages.length + 1,
         sender: 'ai',
-        text: aiResponses[Math.floor(Math.random() * aiResponses.length)],
+        text: "I'm sorry, I encountered an error. Please try again later.",
         timestamp: new Date().toISOString()
       };
-      
-      setMessages(prev => [...prev, aiMessage]);
-    }, 1000);
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Auto-scroll to bottom of messages
@@ -116,13 +151,22 @@ const App = () => {
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Type your message here..."
+              placeholder={isLoading ? "AI is thinking..." : "Type your message here..."}
+              disabled={isLoading}
             />
-            <button type="submit" className="send-button">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+            <button 
+              type="submit" 
+              className={`send-button ${isLoading ? 'loading' : ''}`}
+              disabled={isLoading || !inputValue.trim()}
+            >
+              {isLoading ? (
+                <div className="loading-spinner"></div>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
             </button>
           </div>
         </form>

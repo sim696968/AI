@@ -263,9 +263,40 @@ body, html, #root {
   transition: all 0.2s;
 }
 
-.send-button:hover {
+.send-button {
+  transition: all 0.2s;
+}
+
+.send-button:hover:not(:disabled) {
   color: white;
   background: rgba(255, 255, 255, 0.1);
+}
+
+.send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  margin: 0 auto;
+}
+
+/* Disabled input state */
+input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 /* Responsive */
