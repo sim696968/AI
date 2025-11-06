@@ -33,6 +33,10 @@ const App = () => {
     setIsLoading(true);
 
     try {
+      // Debug: Log environment variables
+      console.log('Environment:', import.meta.env);
+      console.log('API Key exists:', !!import.meta.env.VITE_OPENAI_API_KEY);
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
