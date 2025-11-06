@@ -9,10 +9,5 @@ services:
       npm run build
     staticPublishPath: "./frontend/dist"
     envVars:
-      - key: PORT
-        value: 10000
-      - key: VITE_OPENAI_API_KEY
-        fromService:
-          name: zm-ai
-          type: env_var
-          property: OPENAI_API_KEY
+      - key: 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
+        value: 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
