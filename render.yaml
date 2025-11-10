@@ -1,15 +1,15 @@
 services:
   - type: web
     name: zm-ai
-    env: node
-    plan: free
+    env: python
     buildCommand: |
-      echo "Installing dependencies..."
       cd frontend
       npm install
-      echo "Building application..."
       npm run build
-    staticPublishPath: "./frontend/dist"
+      cd ..
+      pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.server:app --host 0.0.0.0 --port $PORT
+    plan: free
     envVars:
-  - key: VITE_OPENAI_API_KEY
-    sync: false  # This means you'll set it in the Render dashboard
+      - key: OPENAI_API_KEY
+        sync: false
