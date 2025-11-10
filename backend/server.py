@@ -1,148 +1,126 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from duckduckgo_search import DDGS
+from pydantic import BaseModel
+import openai
 import os
-import uuid
-from datetime import datetime
+import json
+import asyncio
+from dotenv import load_dotenv
 
-app = FastAPI()
+# Load environment variables from .env (for local dev)
+load_dotenv()
 
-# Allow frontend to call API
+# Get API key from .env or Render env vars
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise RuntimeError("❌ OPENAI_API_KEY not found. Please set it in .env or Render environment.")
+
+openai.api_key = OPENAI_API_KEY
+
+# Create FastAPI app
+app = FastAPI(title="ZM AI Chatbot")
+
+# Allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # you can limit this to your frontend URL if needed
+    allow_origins=["*"],  # For development; restrict in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -------------------------------
-# 🔹 Chat memory storage
-# -------------------------------
-chat_sessions = {}  # key = session_id, value = list of messages
+# Model for incoming chat requests
+class ChatRequest(BaseModel):
+    message: str
 
+# ----------------------------
+# Chat endpoint (normal)
+# ----------------------------
+@app.post("/api/chat")
+async def chat(request: ChatRequest):
+    user_message = request.message.strip()
+    if not user_message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-# -------------------------------
-# 🔹 New Chat Endpoint
-# -------------------------------
-@app.post("/new_chat")
-async def new_chat(request: Request):
-    data = await request.json()
-    template = data.get("template", "default")
-    
-    chat_id = str(uuid.uuid4())
-    timestamp = datetime.now().isoformat()
-    
-    # Template-specific titles and initial messages
-    templates = {
-        "code": {
-            "title": "Code Assistant",
-            "system_prompt": "I am a coding assistant. I can help you with programming questions, code review, and debugging."
-        },
-        "analysis": {
-            "title": "Data Analysis",
-            "system_prompt": "I am a data analysis assistant. I can help you analyze data, create visualizations, and interpret results."
-        },
-        "default": {
-            "title": "New Chat",
-            "system_prompt": None
-        }
-    }
-    
-    template_info = templates.get(template, templates["default"])
-    
-    chat_sessions[chat_id] = {
-        "title": template_info["title"],
-        "messages": [],
-        "timestamp": timestamp,
-        "template": template,
-        "system_prompt": template_info["system_prompt"]
-    }
-    
-    return {
-        "chat_id": chat_id,
-        "title": template_info["title"],
-        "timestamp": timestamp,
-        "template": template
-    }
+    # Keep a global conversation history (for demo)
+    if not hasattr(app.state, "chat_history"):
+        app.state.chat_history = []
 
+    app.state.chat_history.append({"role": "user", "content": user_message})
 
-# -------------------------------
-# 🔹 Helper: DuckDuckGo Web Search
-# -------------------------------
-def web_search(query, max_results=3):
     try:
-        with DDGS() as ddgs:
-            results = ddgs.text(query, max_results=max_results)
-        if not results:
-            return "No relevant web results found."
-        output = "\n".join(
-            [f"- {r['title']} ({r['href']})" for r in results if 'title' in r]
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=app.state.chat_history,
+            temperature=0.7,
+            max_tokens=600,
         )
-        return output
+
+        assistant_message = response.choices[0].message.get("content", "").strip()
+        app.state.chat_history.append({"role": "assistant", "content": assistant_message})
+
+        return {"reply": assistant_message}
+
     except Exception as e:
-        return f"Web search failed: {e}"
+        print(f"OpenAI error: {e}")
+        raise HTTPException(status_code=500, detail="Error communicating with OpenAI API")
 
 
-# -------------------------------
-# 🔹 Chat Endpoint
-# -------------------------------
-@app.post("/chat")
-async def chat(request: Request):
-    data = await request.json()
-    message = data.get("message", "")
-    session_id = data.get("session_id", "default")
+# ----------------------------
+# Streaming endpoint (optional)
+# ----------------------------
+@app.post("/api/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """Stream response word-by-word for typing effect."""
+    user_message = request.message.strip()
+    if not user_message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    # Create new session if needed
-    if session_id not in chat_sessions:
-        chat_sessions[session_id] = []
+    async def event_stream():
+        try:
+            stream = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": user_message}],
+                stream=True,
+            )
+            for chunk in stream:
+                content = chunk.choices[0].delta.get("content")
+                if content:
+                    yield f"data: {json.dumps({'token': content})}\n\n"
+                    await asyncio.sleep(0.02)
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
-    # Save user message
-    chat_sessions[session_id].append({"role": "user", "content": message})
-
-    # Simple AI logic
-    if message.lower().startswith("search "):
-        query = message[7:].strip()
-        reply = f"🔍 Web search results for **{query}**:\n" + web_search(query)
-    else:
-        reply = f"🤖 You said: {message}"
-
-    # Save assistant reply
-    chat_sessions[session_id].append({"role": "assistant", "content": reply})
-
-    # Generate chat title automatically (based on first message)
-    title = None
-    if len(chat_sessions[session_id]) == 2:  # first response
-        title = f"Topic: {message[:30]}"
-
-    return JSONResponse({"reply": reply, "title": title})
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-# -------------------------------
-# 🔹 Static Frontend Serving
-# -------------------------------
-frontend_dir = os.path.join(os.path.dirname(__file__), "../frontend/dist")
+# ----------------------------
+# Serve Frontend (dist/)
+# ----------------------------
+frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
+else:
+    print("⚠️  Frontend dist/ folder not found. Run `npm run build` in /frontend first.")
 
-# -------------------------------
-# 🔹 Root (Optional)
-# -------------------------------
+# ----------------------------
+# Root route (fallback)
+# ----------------------------
 @app.get("/")
-def root():
-    index_path = os.path.join(frontend_dir, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"message": "Frontend not found. Please build it with npm run build."}
+async def root():
+    index_file = os.path.join(frontend_dir, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return JSONResponse({"message": "Frontend not built yet."})
 
 
-# -------------------------------
-# 🔹 Start Command (for Render)
-# -------------------------------
+# ----------------------------
+# Run directly (for local dev)
+# ----------------------------
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 5000))
-    uvicorn.run("server:app", host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=5000)

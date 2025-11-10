@@ -1,178 +1,158 @@
-import React, { useState, useEffect, useRef } from "react";
-import "./App.css";
+import { useState, useRef, useEffect } from "react";
+import "./index.css";
 
-const App = () => {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      sender: 'ai',
-      text: 'Hello! I am ZM AI Assistant. How can I help you today?',
-      timestamp: new Date().toISOString()
-    }
-  ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef(null);
+export default function App() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const messageEndRef = useRef(null);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
+  // Auto scroll to bottom when new messages appear
+  useEffect(() => {
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-    // Add user message
-    const userMessage = {
-      id: messages.length + 1,
-      sender: 'user',
-      text: inputValue,
-      timestamp: new Date().toISOString()
-    };
+  // Send message to backend
+  const sendMessage = async () => {
+    if (!input.trim()) return;
 
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-    setInputValue('');
-    setIsLoading(true);
+    const userMessage = { role: "user", content: input.trim() };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setLoading(true);
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful AI assistant.'
-            },
-            ...updatedMessages.map(msg => ({
-              role: msg.sender === 'user' ? 'user' : 'assistant',
-              content: msg.text
-            }))
-          ],
-          temperature: 0.7
-        })
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage.content }),
       });
 
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error("Server error: " + response.statusText);
       }
 
       const data = await response.json();
-      
-      if (data.choices && data.choices[0].message) {
-        const aiMessage = {
-          id: updatedMessages.length + 1,
-          sender: 'ai',
-          text: data.choices[0].message.content,
-          timestamp: new Date().toISOString()
-        };
-        setMessages(prev => [...prev, aiMessage]);
-      }
+      const aiMessage = { role: "assistant", content: data.reply };
+
+      setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
-      const errorMessage = {
-        id: updatedMessages.length + 1,
-        sender: 'ai',
-        text: "I'm sorry, I encountered an error. Please try again later.",
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      console.error("Error:", error);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "⚠️ Failed to get response from server." },
+      ]);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // Auto-scroll to bottom of messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+  const handleNewChat = () => {
+    setMessages([]);
   };
 
   return (
-    <div className="app">
+    <div className="app-container">
       {/* Sidebar */}
-      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+      <div className="sidebar">
         <div className="sidebar-header">
-          <button className="new-chat-btn">
-            <span>+</span> New Chat
-          </button>
-          <button className="toggle-sidebar" onClick={toggleSidebar}>
-            ☰
+          <button className="new-chat-btn" onClick={handleNewChat}>
+            + New Chat
           </button>
         </div>
-        <div className="chat-history">
-          <div className="chat-item active">
-            <span>New Chat</span>
-          </div>
-          <div className="chat-item">
-            <span>Previous Chat 1</span>
-          </div>
-          <div className="chat-item">
-            <span>Previous Chat 2</span>
-          </div>
-        </div>
-        <div className="user-profile">
-          <div className="profile-pic">U</div>
-          <span>User Name</span>
+        <div className="sidebar-footer">
+          <p style={{ textAlign: "center", fontSize: "12px", color: "#999" }}>
+            ZM AI Chat
+          </p>
         </div>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="main-content">
-        {messages.length === 0 ? (
-          <div className="welcome-screen">
-            <h1>ZM AI Assistant</h1>
-            <p>How can I help you today?</p>
-          </div>
-        ) : (
-          <div className="chat-messages">
-            {messages.map((message) => (
-              <div key={message.id} className={`message ${message.sender}`}>
-                <div className="message-content">
-                  {message.text}
+      {/* Chat main area */}
+      <div className="chat-main">
+        <div className="chat-header">ZM AI</div>
+
+        <div className="messages-area">
+          {messages.length === 0 ? (
+            <div className="welcome-screen">
+              <div className="welcome-title">Welcome to ZM AI</div>
+              <p>Start typing below to begin a conversation.</p>
+              <div>
+                <div
+                  className="example-card"
+                  onClick={() => setInput("Tell me a joke")}
+                >
+                  Tell me a joke
                 </div>
-                <div className="message-time">
-                  {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div
+                  className="example-card"
+                  onClick={() => setInput("What is AI?")}
+                >
+                  What is AI?
+                </div>
+                <div
+                  className="example-card"
+                  onClick={() =>
+                    setInput("Give me tips to stay productive.")
+                  }
+                >
+                  Productivity tips
                 </div>
               </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+            </div>
+          ) : (
+            messages.map((msg, i) => (
+              <div
+                key={i}
+                className={`message-row ${msg.role === "assistant" ? "assistant" : ""}`}
+              >
+                <div className="message-content-wrapper">
+                  <div className="message-avatar-wrapper">
+                    {msg.role === "assistant" ? "🤖" : "🧑"}
+                  </div>
+                  <div className="message-text">{msg.content}</div>
+                </div>
+              </div>
+            ))
+          )}
+          {loading && (
+            <div className="message-row assistant">
+              <div className="message-content-wrapper">
+                <div className="message-avatar-wrapper">🤖</div>
+                <div className="message-text">Typing...</div>
+              </div>
+            </div>
+          )}
+          <div ref={messageEndRef} />
+        </div>
 
-        <form className="message-input-container" onSubmit={handleSendMessage}>
+        {/* Input area */}
+        <div className="input-area">
           <div className="input-wrapper">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={isLoading ? "AI is thinking..." : "Type your message here..."}
-              disabled={isLoading}
+            <textarea
+              className="message-input"
+              placeholder="Send a message..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows="1"
             />
-            <button 
-              type="submit" 
-              className={`send-button ${isLoading ? 'loading' : ''}`}
-              disabled={isLoading || !inputValue.trim()}
+            <button
+              className="send-button"
+              onClick={sendMessage}
+              disabled={loading}
             >
-              {isLoading ? (
-                <div className="loading-spinner"></div>
-              ) : (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              )}
+              ➤
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
-};
-
-export default App;
+}
