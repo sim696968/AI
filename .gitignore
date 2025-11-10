@@ -1,21 +1,7 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.db
-.env
-.venv/
-venv/
-*.log
-
-# Node
-node_modules/
+﻿node_modules/
 frontend/node_modules/
 frontend/dist/
-npm-debug.log*
-.DS_Store
-
-# IDE
-.vscode/
-.idea/
+.venv/
+venv/
+__pycache__/
+.env
