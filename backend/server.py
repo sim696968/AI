@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import openai
+from openai import OpenAI
 import os
 import json
 import asyncio
@@ -16,8 +16,6 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("❌ OPENAI_API_KEY not found. Please set it in .env or Render environment.")
-
-openai.api_key = OPENAI_API_KEY
 
 # Create FastAPI app
 app = FastAPI(title="ZM AI Chatbot")
@@ -50,21 +48,24 @@ async def chat(request: ChatRequest):
     app.state.chat_history.append({"role": "user", "content": user_message})
 
     try:
-        response = openai.ChatCompletion.create(
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=app.state.chat_history,
             temperature=0.7,
             max_tokens=600,
         )
 
-        assistant_message = response.choices[0].message.get("content", "").strip()
+        assistant_message = response.choices[0].message.content.strip()
         app.state.chat_history.append({"role": "assistant", "content": assistant_message})
 
         return {"reply": assistant_message}
 
     except Exception as e:
         print(f"OpenAI error: {e}")
-        raise HTTPException(status_code=500, detail="Error communicating with OpenAI API")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 # ----------------------------
