@@ -13,10 +13,3 @@ services:
     envVars:
       - key: OPENAI_API_KEY
         sync: false
-buildCommand: |
-  cd frontend
-  npm install
-  npm install react-icons
-  npm run build
-  cd ..
-  pip install -r backend/requirements.txt
