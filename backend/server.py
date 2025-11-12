@@ -33,40 +33,34 @@ app.add_middleware(
 
 # Model for incoming chat requests
 class ChatRequest(BaseModel):
-    chat_id: str = None
     message: str
 
 # ----------------------------
 # Chat endpoint (normal)
 # ----------------------------
-@app.post("/chat")
+@app.post("/api/chat")
 async def chat(request: ChatRequest):
     user_message = request.message.strip()
     if not user_message:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    chat_id = request.chat_id or "default"
-    
-    if not hasattr(app.state, "chats"):
-        app.state.chats = {}
-    
-    if chat_id not in app.state.chats:
-        app.state.chats[chat_id] = []
+    if not hasattr(app.state, "chat_history"):
+        app.state.chat_history = []
 
-    app.state.chats[chat_id].append({"role": "user", "content": user_message, "timestamp": None})
+    app.state.chat_history.append({"role": "user", "content": user_message})
 
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": m["role"], "content": m["content"]} for m in app.state.chats[chat_id]],
+            messages=app.state.chat_history,
             temperature=0.7,
             max_tokens=600,
         )
 
         assistant_message = response.choices[0].message.get("content", "").strip()
-        app.state.chats[chat_id].append({"role": "assistant", "content": assistant_message, "timestamp": None})
+        app.state.chat_history.append({"role": "assistant", "content": assistant_message})
 
-        return {"messages": app.state.chats[chat_id]}
+        return {"reply": assistant_message}
 
     except Exception as e:
         print(f"OpenAI error: {e}")
