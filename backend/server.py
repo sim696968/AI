@@ -69,53 +69,21 @@ async def chat(request: ChatRequest):
 
 
 # ----------------------------
-# Streaming endpoint (optional)
-# ----------------------------
-@app.post("/api/chat/stream")
-async def chat_stream(request: ChatRequest):
-    """Stream response word-by-word for typing effect."""
-    user_message = request.message.strip()
-    if not user_message:
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
-
-    async def event_stream():
-        try:
-            stream = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": user_message}],
-                stream=True,
-            )
-            for chunk in stream:
-                content = chunk.choices[0].delta.get("content")
-                if content:
-                    yield f"data: {json.dumps({'token': content})}\n\n"
-                    await asyncio.sleep(0.02)
-            yield "data: [DONE]\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
-
-
-# ----------------------------
 # Serve Frontend (dist/)
 # ----------------------------
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 
-if os.path.exists(frontend_dir):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
-else:
-    print("⚠️  Frontend dist/ folder not found. Run `npm run build` in /frontend first.")
-
-# ----------------------------
-# Root route (fallback)
-# ----------------------------
 @app.get("/")
 async def root():
     index_file = os.path.join(frontend_dir, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
     return JSONResponse({"message": "Frontend not built yet."})
+
+if os.path.exists(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
+else:
+    print("⚠️  Frontend dist/ folder not found. Run `npm run build` in /frontend first.")
 
 
 # ----------------------------
