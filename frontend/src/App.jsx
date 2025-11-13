@@ -35,9 +35,10 @@ function App() {
       setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
       console.error("Chat error:", error);
+      const errorMsg = error.message || "Failed to get response from server.";
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "⚠️ Failed to get response from server." },
+        { role: "assistant", content: `⚠️ Error: ${errorMsg}` },
       ]);
     } finally {
       setLoading(false);
