@@ -13,5 +13,3 @@ services:
     envVars:
       - key: OPENAI_API_KEY
         sync: false
-      - key: VITE_API_URL
-        fromSecret: VITE_API_URL

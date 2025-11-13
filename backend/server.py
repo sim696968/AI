@@ -1,7 +1,6 @@
 # backend/server.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -23,9 +22,6 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 # FastAPI app setup
 # ----------------------------
 app = FastAPI(title="ZM AI Chatbot")
-
-# Mount static files from frontend/dist
-app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="static")
 
 # Allow frontend access (CORS)
 app.add_middleware(
