@@ -7,9 +7,7 @@ function App() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ✅ Change this to your actual Render backend URL
-  const API_BASE_URL =
-    import.meta.env.VITE_API_URL || "https://zmai.onrender.com/api/chat";
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "/api/chat";
 
   const handleSend = async () => {
     if (!input.trim()) return;

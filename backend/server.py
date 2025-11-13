@@ -1,10 +1,13 @@
 # backend/server.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
+from pathlib import Path
 
 # ----------------------------
 # Load environment variables
@@ -71,8 +74,17 @@ async def chat(req: ChatRequest):
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 # ----------------------------
-# Root route (optional)
+# Serve static frontend files
 # ----------------------------
-@app.get("/")
-async def root():
-    return {"message": "ZM AI Chatbot API is running."}
+frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+
+if frontend_dist.exists():
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+    
+    @app.get("/")
+    async def root():
+        return FileResponse(str(frontend_dist / "index.html"))
+else:
+    @app.get("/")
+    async def root():
+        return {"message": "ZM AI Chatbot API is running."}
