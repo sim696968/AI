@@ -1,98 +1,78 @@
-from fastapi import FastAPI, Request, HTTPException
+# backend/server.py
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from openai import OpenAI
-import os
 from dotenv import load_dotenv
+import os
 
-# Load environment variables from .env (for local dev)
+# ----------------------------
+# Load environment variables
+# ----------------------------
 load_dotenv()
-
-# Get API key from .env or Render env vars
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 if not OPENAI_API_KEY:
     raise RuntimeError("❌ OPENAI_API_KEY not found. Please set it in .env or Render environment.")
 
-# Create FastAPI app
+# Initialize OpenAI client
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+# ----------------------------
+# FastAPI app setup
+# ----------------------------
 app = FastAPI(title="ZM AI Chatbot")
 
-@app.get("/health")
-async def health():
-    return {"status": "ok", "api_key_set": bool(OPENAI_API_KEY)}
-
-# Allow frontend access
+# Allow frontend access (CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development; restrict in production
+    allow_origins=["*"],  # For production, restrict this to your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Model for incoming chat requests
+# ----------------------------
+# Models
+# ----------------------------
 class ChatRequest(BaseModel):
     message: str
 
 # ----------------------------
-# Chat endpoint (normal)
+# Health check
+# ----------------------------
+@app.get("/health")
+async def health():
+    return {"status": "ok", "api_key_set": bool(OPENAI_API_KEY)}
+
+# ----------------------------
+# Chat endpoint
 # ----------------------------
 @app.post("/api/chat")
-async def chat(request: ChatRequest):
-    user_message = request.message.strip()
-    if not user_message:
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
-
-    if not hasattr(app.state, "chat_history"):
-        app.state.chat_history = []
-
-    app.state.chat_history.append({"role": "user", "content": user_message})
-
+async def chat(req: ChatRequest):
+    """
+    Handles user chat requests and returns AI responses.
+    """
     try:
-        client = OpenAI(api_key=OPENAI_API_KEY)
-        
+        # Send message to OpenAI
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=app.state.chat_history,
-            temperature=0.7,
-            max_tokens=600,
-            timeout=30,
+            messages=[
+                {"role": "system", "content": "You are a helpful AI chatbot assistant."},
+                {"role": "user", "content": req.message},
+            ],
         )
 
-        assistant_message = response.choices[0].message.content.strip()
-        app.state.chat_history.append({"role": "assistant", "content": assistant_message})
-
-        return {"reply": assistant_message}
+        ai_reply = response.choices[0].message.content.strip()
+        return {"reply": ai_reply}
 
     except Exception as e:
-        print(f"OpenAI error: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"OpenAI API Error: {str(e)}")
-
+        # Return clear backend error message to frontend
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 # ----------------------------
-# Serve Frontend (dist/)
+# Root route (optional)
 # ----------------------------
-frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
-
 @app.get("/")
 async def root():
-    index_file = os.path.join(frontend_dir, "index.html")
-    if os.path.exists(index_file):
-        return FileResponse(index_file)
-    return JSONResponse({"message": "Frontend not built yet."})
-
-if os.path.exists(frontend_dir):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
-else:
-    print("⚠️  Frontend dist/ folder not found. Run `npm run build` in /frontend first.")
-
-
-# ----------------------------
-# Run directly (for local dev)
-# ----------------------------
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    return {"message": "ZM AI Chatbot API is running."}
