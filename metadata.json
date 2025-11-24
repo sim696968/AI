@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Aura AI Assistant",
+  "description": "An emotionally intelligent, context-aware AI assistant with personalized recommendations and web search capabilities powered by Gemini.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
